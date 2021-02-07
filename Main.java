@@ -1,4 +1,4 @@
 public static void main(String... args) {
-	System.out.println("Hello World!");
+	System.err.println("Hello!");
 	System.out.println("Hello" == new String("Hello").intern());
 }
