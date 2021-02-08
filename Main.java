@@ -1,4 +1,5 @@
 public static void main(String... args) {
-	System.err.println("Hello!");
-	System.out.println("Hello" == new String("Hello").intern());
+	System.out.print("Hello, Space!");
+	System.out.println("Hello" == new StringBuilder("Hello").toString().intern() ^ true);
+	// Add some comments
 }
