@@ -10,6 +10,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 @RestController
 public class FacadeServiceController {
@@ -40,11 +42,19 @@ public class FacadeServiceController {
                                     .retrieve()
                                     .bodyToMono(String.class);
 
-        Mono<String> logs = logging[random.nextInt(logging.length)].get()
-                                    .uri("/log")
-                                    .retrieve()
-                                    .bodyToMono(String.class);
+
+        Mono<String> logs = postToLoggingService();
 
         return messages.zipWith(logs, (msg, lg) -> msg + ": " + lg).onErrorReturn("Error");
+    }
+
+    private Mono<String> postToLoggingService() {
+        Mono<String> logs = logging[random.nextInt(logging.length)].get()
+                .uri("/log")
+                .retrieve()
+                .bodyToMono(String.class)
+                .retry(10)
+                .onErrorResume(throwable -> postToLoggingService());
+        return logs;
     }
 }
