@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -19,7 +20,15 @@ public class LoggingServiceController {
     @GetMapping("/log")
     public String getLogs() {
         IMap<UUID, String> map = instance.getMap(DISTR_MAP);
-        System.out.println("map.toString(): " + map.toString());
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<UUID, String> entry : map.entrySet()) {
+            builder.append("[")
+                    .append(entry.getKey())
+                    .append(" ")
+                    .append(entry.getValue())
+                    .append("]");
+        }
+        System.out.println("map.toString(): " + builder.toString());
         return "Map from LoggingService: " + map.toString();
     }
 
