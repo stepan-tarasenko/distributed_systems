@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 public class MyHazelcastClientDistributedMap {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception{
         HazelcastInstance client = HazelcastClient.newHazelcastClient();
         HazelcastInstance client1 = HazelcastClient.newHazelcastClient();
         HazelcastInstance client2 = HazelcastClient.newHazelcastClient();
@@ -17,43 +17,43 @@ public class MyHazelcastClientDistributedMap {
         for (int i = 0; i < 1000; i++) {
             map1.put(i, "val" + i);
         }
-
+        Map<String, Integer> mp1 = client1.getMap("map");
+        mp1.put("val", 0);
+        IMap<String, Integer> mp2 = client1.getMap("map2");
+        mp2.put("val", 0);
+        IMap<String, Value> mp3 = client1.getMap("map3");
+        mp3.put("val", new Value());
         //Task2 no lock
-        new Thread(() -> {
+        Thread t1 = new Thread(() -> {
             Map<String, Integer> map = client1.getMap("map");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
                 int res = map.get("val");
                 map.put("val", ++res);
             }
-            System.out.println("Amount: " + client1.getMap("map").get("val"));
-        }).start();
-        new Thread(() -> {
+        });
+        t1.start();
+        Thread t2 = new Thread(() -> {
             Map<String, Integer> map = client2.getMap("map");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
                 int res = map.get("val");
                 map.put("val", ++res);
             }
-            System.out.println("Amount: " + client2.getMap("map").get("val"));
-        }).start();
-        new Thread(() -> {
+        });
+        t2.start();
+        Thread t3 = new Thread(() -> {
             Map<String, Integer> map = client3.getMap("map");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
                 int res = map.get("val");
                 map.put("val", ++res);
             }
-            System.out.println("Amount: " + client3.getMap("map").get("val"));
-        }).start();
-
+        });
+        t3.start();
         //Task2 pessimistic lock
-        new Thread(() -> {
+        Thread tt1 = new Thread(() -> {
             IMap<String, Integer> map = client1.getMap("map2");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
-                int res = map.get("val");
                 map.lock("val");
+                int res = map.get("val");
                 try {
                     Thread.sleep( 10 );
                     map.put("val", ++res);
@@ -62,14 +62,13 @@ public class MyHazelcastClientDistributedMap {
                     map.unlock("val");
                 }
             }
-            System.out.println("Amount: " + client1.getMap("map2").get("val"));
-        }).start();
-        new Thread(() -> {
+        });
+        tt1.start();
+        Thread tt2 = new Thread(() -> {
             IMap<String, Integer> map = client2.getMap("map2");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
-                int res = map.get("val");
                 map.lock("val");
+                int res = map.get("val");
                 try {
                     Thread.sleep( 10 );
                     map.put("val", ++res);
@@ -78,14 +77,13 @@ public class MyHazelcastClientDistributedMap {
                     map.unlock("val");
                 }
             }
-            System.out.println("Amount: " + client2.getMap("map2").get("val"));
-        }).start();
-        new Thread(() -> {
+        });
+        tt2.start();
+        Thread tt3 = new Thread(() -> {
             IMap<String, Integer> map = client3.getMap("map2");
-            map.put("val", 0);
             for (int i = 0; i < 1000; i++) {
-                int res = map.get("val");
                 map.lock("val");
+                int res = map.get("val");
                 try {
                     Thread.sleep( 10 );
                     map.put("val", ++res);
@@ -94,65 +92,77 @@ public class MyHazelcastClientDistributedMap {
                     map.unlock("val");
                 }
             }
-            System.out.println("Amount: " + client3.getMap("map2").get("val"));
-        }).start();
+        });
+        tt3.start();
 
         //Task2 optimistic lock
-        new Thread(() -> {
+        Thread ttt1 = new Thread(() -> {
             IMap<String, Value> map = client1.getMap("map3");
-            map.put("val", new Value());
             for (int i = 0; i < 1000; i++) {
                 try {
-                    Value old = map.get("val");
-                    Value neww = new Value(old);
-                    neww.amount++;
-                    Thread.sleep( 10 );
                     for (;;) {
+                        Value old = map.get("val");
+                        Value neww = new Value(old);
+                        neww.amount++;
+                        Thread.sleep( 10 );
                         if (map.replace("val", old, neww))
                             break;
                     }
                 } catch (InterruptedException ignored) {
                 }
             }
-            System.out.println("Amount: " + ((Value)(client1.getMap("map3").get("val"))).amount);
-        }).start();
+        });
+        ttt1.start();
 
-        new Thread(() -> {
+        Thread ttt2 = new Thread(() -> {
             IMap<String, Value> map = client2.getMap("map3");
-            map.put("val", new Value());
             for (int i = 0; i < 1000; i++) {
                 try {
-                    Value old = map.get("val");
-                    Value neww = new Value(old);
-                    neww.amount++;
-                    Thread.sleep( 10 );
                     for (;;) {
+                        Value old = map.get("val");
+                        Value neww = new Value(old);
+                        neww.amount++;
+                        Thread.sleep( 10 );
                         if (map.replace("val", old, neww))
                             break;
                     }
                 } catch (InterruptedException ignored) {
                 }
             }
-            System.out.println("Amount: " + ((Value)(client2.getMap("map3").get("val"))).amount);
-        }).start();
-        new Thread(() -> {
+        });
+        ttt2.start();
+        Thread ttt3 = new Thread(() -> {
             IMap<String, Value> map = client3.getMap("map3");
-            map.put("val", new Value());
             for (int i = 0; i < 1000; i++) {
                 try {
-                    Value old = map.get("val");
-                    Value neww = new Value(old);
-                    neww.amount++;
-                    Thread.sleep( 10 );
                     for (;;) {
+                        Value old = map.get("val");
+                        Value neww = new Value(old);
+                        neww.amount++;
+                        Thread.sleep( 10 );
                         if (map.replace("val", old, neww))
                             break;
                     }
-                } catch (InterruptedException ignored) {
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
-            System.out.println("Amount: " + ((Value)(client3.getMap("map3").get("val"))).amount);
-        }).start();
+        });
+        ttt3.start();
+
+        t1.join();
+        t2.join();
+        t3.join();
+        tt1.join();
+        tt2.join();
+        tt3.join();
+        ttt1.join();
+        ttt2.join();
+        ttt3.join();
+
+        System.out.println("No lock: " + mp1.get("val"));
+        System.out.println("Pes lock: " + mp2.get("val"));
+        System.out.println("Opt lock: " + mp3.get("val").amount);
     }
 
     static class Value implements Serializable {
