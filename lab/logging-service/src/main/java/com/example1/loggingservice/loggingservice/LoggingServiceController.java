@@ -26,10 +26,11 @@ public class LoggingServiceController {
                     .append(entry.getKey())
                     .append(" ")
                     .append(entry.getValue())
-                    .append("]");
+                    .append("]")
+                    .append("\n");
         }
         System.out.println("map.toString(): " + builder.toString());
-        return "Map from LoggingService: " + map.toString();
+        return "Map from LoggingService: " + builder.toString();
     }
 
     @PostMapping("/log")
