@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Function;
@@ -54,7 +55,8 @@ public class FacadeServiceController {
                 .retrieve()
                 .bodyToMono(String.class)
                 .retry(10)
-                .onErrorResume(throwable -> postToLoggingService());
+                .onErrorResume(throwable -> postToLoggingService())
+                .timeout(Duration.ofMinutes(1));
         return logs;
     }
 }
