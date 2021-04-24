@@ -3,7 +3,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 
-public class RabbitmqConsumer {
+public class RabbitmqConsumer2 {
     public static void main(String[] args) throws Exception {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
@@ -22,9 +22,8 @@ public class RabbitmqConsumer {
             try {
                 doWork(message);
             } finally {
-                System.out.println(" [x] no sending ack");
-                channel.basicReject(delivery.getEnvelope().getDeliveryTag(), true);
-                // No ack here
+                System.out.println(" [x] Done, sending ack");
+                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), true);
             }
         };
         channel.basicConsume(RabbitmqProducer.QUEUE_NAME, false, deliverCallback, consumerTag -> { });
