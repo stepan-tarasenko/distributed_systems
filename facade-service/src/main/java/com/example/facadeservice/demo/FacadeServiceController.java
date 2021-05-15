@@ -6,6 +6,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,10 +23,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 public class FacadeServiceController {
-    public final static String QUEUE = "queue";
     private final ConnectionFactory factory = new ConnectionFactory();
     private Connection connection = null;
     private Channel channel = null;
+
+    @Autowired
+    private Environment environment;
 
     @Autowired
     private DiscoveryClient discoveryClient;
@@ -35,7 +38,8 @@ public class FacadeServiceController {
     private void init() {
         connection = factory.newConnection();
         channel = connection.createChannel();
-        channel.queueDeclare(QUEUE, true, false, false, null);
+        channel.queueDeclare(environment.getProperty(environment.getProperty("queue")),
+                true, false, false, null);
     }
 
     @SneakyThrows
@@ -86,8 +90,8 @@ public class FacadeServiceController {
         return logs;
     }
 
-    private static void send(Channel channel, String message) throws Exception {
-        channel.basicPublish("", QUEUE, null, message.getBytes());
+    private void send(Channel channel, String message) throws Exception {
+        channel.basicPublish("", environment.getProperty("queue"), null, message.getBytes());
         System.out.println(" [x] Sent " + message);
     }
 

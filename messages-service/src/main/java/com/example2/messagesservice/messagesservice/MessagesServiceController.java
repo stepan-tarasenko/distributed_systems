@@ -4,6 +4,8 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,13 +20,15 @@ import java.util.concurrent.TimeoutException;
 public class MessagesServiceController {
 
     private final ArrayList<String> list = new ArrayList<>();
-    public final static String QUEUE = "queue";
     private static final ConnectionFactory factory = new ConnectionFactory();
+
+    @Autowired
+    private Environment env;
 
     @PostConstruct
     private void init() {
         try {
-            factory.setHost("localhost");
+            factory.setHost(env.getProperty("host"));
             Connection connection = factory.newConnection();
             Channel channel = connection.createChannel();
             channel.basicQos(1);
@@ -36,7 +40,8 @@ public class MessagesServiceController {
                 System.out.println(" [x] Done, sending ack");
                 channel.basicAck(delivery.getEnvelope().getDeliveryTag(), true);
             };
-            channel.basicConsume(QUEUE, false, deliverCallback, consumerTag -> { });
+            channel.basicConsume(env.getProperty("queue"),
+                    false, deliverCallback, consumerTag -> { });
         } catch (IOException | TimeoutException ignored) {
         }
     }
