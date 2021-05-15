@@ -1,7 +1,7 @@
 POST http://localhost:8080/facade
 Content-Type: application/json
 
-"msg5"
+"msg3"
 ###
 
 GET http://localhost:8080/facade

@@ -4,6 +4,8 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import lombok.SneakyThrows;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,31 +15,20 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
+import java.net.URI;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 public class FacadeServiceController {
     public final static String QUEUE = "queue";
-    private final WebClient[] logging = {
-            WebClient.create("http://localhost:8081/"),
-            // WebClient.create("http://localhost:8083/"),
-            // WebClient.create("http://localhost:8085/")
-    };
-    private final WebClient[] messaging = {
-            WebClient.create("http://localhost:8085/"),
-            WebClient.create("http://localhost:8082/"),
-            WebClient.create("http://localhost:8089/")
-    };
-    private final Random random = new Random();
     private final ConnectionFactory factory = new ConnectionFactory();
     private Connection connection = null;
     private Channel channel = null;
+
+    @Autowired
+    private DiscoveryClient discoveryClient;
 
     @SneakyThrows
     @PostConstruct
@@ -47,6 +38,7 @@ public class FacadeServiceController {
         channel.queueDeclare(QUEUE, true, false, false, null);
     }
 
+    @SneakyThrows
     @PostMapping("/facade")
     public Mono<Void> facade(@RequestBody String text) {
         Msg message = new Msg(UUID.randomUUID(), text);
@@ -55,7 +47,8 @@ public class FacadeServiceController {
             send(channel, text);
         } catch (Exception ignored) {
         }
-        return logging[random.nextInt(logging.length)]
+        AtomicReference<URI> logInstance = getUriByServiceName("log");
+        return WebClient.create(logInstance.get().toURL().toString())
                 .post()
                 .uri("/log")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -64,21 +57,25 @@ public class FacadeServiceController {
                 .bodyToMono(Void.class);
     }
 
+    @SneakyThrows
     @GetMapping("/facade")
     public Mono<String> facade() {
-        Mono<String> messages =  messaging[random.nextInt(messaging.length)].get()
-                                    .uri("/messages")
-                                    .retrieve()
-                                    .bodyToMono(String.class);
-
+        AtomicReference<URI> messaging = getUriByServiceName("message");
+        Mono<String> messages =  WebClient.create(messaging.get().toURL().toString())
+                .get()
+                .uri("/messages")
+                .retrieve()
+                .bodyToMono(String.class);
 
         Mono<String> logs = postToLoggingService();
 
         return messages.zipWith(logs, (msg, lg) -> msg + ": " + lg).onErrorReturn("Error");
     }
 
+    @SneakyThrows
     private Mono<String> postToLoggingService() {
-        Mono<String> logs = logging[random.nextInt(logging.length)]
+        AtomicReference<URI> messaging = getUriByServiceName("log");
+        Mono<String> logs = WebClient.create(messaging.get().toURL().toString())
                 .get()
                 .uri("/log")
                 .retrieve()
@@ -92,5 +89,14 @@ public class FacadeServiceController {
     private static void send(Channel channel, String message) throws Exception {
         channel.basicPublish("", QUEUE, null, message.getBytes());
         System.out.println(" [x] Sent " + message);
+    }
+
+    private AtomicReference<URI> getUriByServiceName(String log) {
+        AtomicReference<URI> logInstance = new AtomicReference<>();
+        discoveryClient.getInstances(log)
+                .stream()
+                .findAny()
+                .ifPresent(serviceInstance -> logInstance.set(serviceInstance.getUri()));
+        return logInstance;
     }
 }
